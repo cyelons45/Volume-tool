@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset=utf-8>
+<meta http-equiv="X-UA-Compatible" content="IE=10">
+    <!--
+     | Version 10.2
+     | Copyright 2012 Esri
+     |
+     | Licensed under the Apache License, Version 2.0 (the "License");
+     | you may not use this file except in compliance with the License.
+     | You may obtain a copy of the License at
+     |
+     |    https://www.apache.org/licenses/LICENSE-2.0
+     |
+     | Unless required by applicable law or agreed to in writing, software
+     | distributed under the License is distributed on an "AS IS" BASIS,
+     | WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     | See the License for the specific language governing permissions and
+     | limitations under the License.
+    -->
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>B.E.R.M VOLUME TEST</title>
+      <link rel="shortcut icon" href="images/survey_unit.png" />
+    <link rel="stylesheet" href="https://js.arcgis.com/3.9/js/dojo/dijit/themes/claro/claro.css">
+    <link rel="stylesheet" type="text/css" href="https://js.arcgis.com/3.9/js/esri/css/esri.css" />
+    <link href="styles/printMap.css" rel="stylesheet" type="text/css" />
+
+<style>
+
+</style>
+    <script type="text/javascript">
+
+        djConfig = (function () {
+            var base = location.href.split("/");
+            base.pop();
+            base = base.join("/");
+            return {
+                async: false,
+                mblHideAddressBar: false,
+                packages: [{
+                    name: "js",
+                    location: base + "/js"
+                }]
+            };
+        })();
+
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script> 
+    <script language="javascript" type="text/javascript" src="https://code.highcharts.com/highcharts.js"></script>
+
+    <script>var dojoConfig = { parseOnLoad: true };</script>
+    <script src="https://js.arcgis.com/3.9/"></script>
+    <script type="text/javascript">
+        dojo.require("esri.map");
+        dojo.require("esri.layers.FeatureLayer");
+        dojo.require("esri.tasks.geometry");
+	dojo.require("esri.dijit.OverviewMap");
+	dojo.require("dijit.form.CheckBox");
+	dojo.require("dijit.form.Button");
+	dojo.require("dojo.dom");
+	dojo.require("dojo.on");
+	dojo.require("dojo.domReady");
+	dojo.require("dojo.parser");
+
+var map, whichContour, upcon, lowcon, upconval, lowconval, monument, CRT_TXT;
+var volcalclist = [];
+var volcalclist2 = [];
+var printchart;
+
+
+var OVERLAY_TRAILS; // an ArcGIS Dynamic Service Layer showing the trails
+var HIGHLIGHT_TRAIL; // Graphics layer showing a highlight on the selected trail, e.g. on clicking a trail
+var HIGHLIGHT_MARKER; // Graphics layer showing a marker over the selected highlighted trail, e.g. on cursor movement over the elevation chart
+var HIGHLIGHT_TRAIL_SYMBOL; // a symbol for the 1 Graphic that will be present in HIGHLIGHT_TRAIL
+var HIGHLIGHT_MARKER_SYMBOL; // a symbol for the 1 Graphic that will be present in HIGHLIGHT_MARKER
+
+var HIGHLIGHT_COLOR  = [255,255,  0]; // when a trail segment is clicked and highlighted, what color highlight?
+var HIGHLIGHT_COLOR2 = [255,  0,  0]; // when a trail's elevation profile is used, what color marker to indicate the location?
+
+        function Init() {
+
+whichContour = "upper";
+
+	var startExtent = new esri.geometry.Extent ({"xmin":-8925429.201670768, "ymin":3833755.763848363, "xmax":-8774088.6822718, "ymax":3996015.6094077653, "spatialReference":{wkid:102100}});
+
+        map = new esri.Map("mapPrint",{
+          extent:startExtent,
+	  showAttribution: false,
+	basemap:"hybrid",
+	slider:true,
+	logo:false
+        });
+
+        dojo.connect(map, "onLoad", function(map) {
+          var overviewMap = new esri.dijit.OverviewMap({map: map, color:"#FF0000"},dojo.byId("overviewDiv"));
+          overviewMap.startup();
+        });
+
+        var printLayer = new esri.layers.FeatureLayer("http://gisdev01vm:6080/arcgis/rest/services/environment/BERMEC/MapServer/1", {
+
+          mode: esri.layers.FeatureLayer.MODE_ONDEMAND,
+//          infoTemplate: popupTemplate2,
+          outFields: ["*"]
+        });
+         
+        map.addLayer(printLayer);
+
+dojo.connect(printLayer, "onClick", function (event) {
+        handleMapClick(event);
+    });
+
+dojo.connect(printLayer,"onMouseOver",function(){  
+              map.setMapCursor("pointer");  
+          });
+
+dojo.connect(printLayer,"onMouseOut",function(){  
+              map.setMapCursor("default");  
+          });
+
+    HIGHLIGHT_TRAIL  = new esri.layers.GraphicsLayer({ opacity:0.50 });
+    HIGHLIGHT_MARKER = new esri.layers.GraphicsLayer();
+    map.addLayer(HIGHLIGHT_TRAIL);
+    map.addLayer(HIGHLIGHT_MARKER);
+    var outline = new esri.symbol.SimpleLineSymbol(esri.symbol.SimpleLineSymbol.STYLE_SOLID, new dojo.Color([0,0,0]), 1);
+    HIGHLIGHT_MARKER_SYMBOL = new esri.symbol.SimpleMarkerSymbol(esri.symbol.SimpleMarkerSymbol.STYLE_CIRCLE,10,outline,new dojo.Color(HIGHLIGHT_COLOR2) );
+    HIGHLIGHT_TRAIL_SYMBOL = new esri.symbol.SimpleLineSymbol(esri.symbol.SimpleLineSymbol.STYLE_SOLID, new dojo.Color(HIGHLIGHT_COLOR), 8);
+
+
+      }
+
+
+function handleMapClick(event) {
+
+    // compose the query: just the name field, and in this 50 meter "radius" from our click
+    var query = new esri.tasks.Query();
+    query.returnGeometry = true;
+    query.outFields      = [ "*" ];
+    query.geometry       = new esri.geometry.Extent({
+        "xmin": event.mapPoint.x - 20,
+        "ymin": event.mapPoint.y - 20,
+        "xmax": event.mapPoint.x + 20,
+        "ymax": event.mapPoint.y + 20,
+        "spatialReference": event.mapPoint.spatialReference
+    });
+
+
+var printTask = new esri.tasks.QueryTask("http://gisdev01vm:6080/arcgis/rest/services/environment/BERMEC/MapServer/1");
+
+
+    printTask.execute(query, function (featureSet) {
+        handleMapClickResults(featureSet);
+    });
+}
+
+
+
+// handle the Query result
+function handleMapClickResults(features) {
+    // start by clearing previous results
+    HIGHLIGHT_TRAIL.clear();
+    HIGHLIGHT_MARKER.clear();
+
+    // grab the first hit; nothing found? bail
+    if (! features.features.length) return;
+    var feature = features.features[0];
+
+    // highlight using the given vector geometry...
+    HIGHLIGHT_TRAIL.add(feature);
+    feature.setSymbol(HIGHLIGHT_TRAIL_SYMBOL);
+           var transectExtent = feature.geometry.getExtent().expand(2.0);
+            map.setExtent(transectExtent);
+
+//    alert(feature.attributes.TRAN_ID);
+var beachtransectid = feature.attributes.TRAN_ID;
+//alert (beachtransectid);
+monument = feature.attributes.TRAN_ID;
+
+CRT_TXT = monument;
+
+
+var printpath = [];
+
+
+var printCharttranQueryTask = new esri.tasks.QueryTask("http://gisdev01vm:6080/arcgis/rest/services/environment/BERMEC/MapServer/0");
+
+
+var printCharttranQuery = new esri.tasks.Query();
+printCharttranQuery.returnGeometry = true;
+printCharttranQuery.outFields = ["TRAN_ID", "POINT_X", "POINT_Y", "z", "dbl", "STATIC_ID", "DBL_CALC", "Z_CALC"];
+printCharttranQuery.where = "TRAN_ID = '" + beachtransectid + "'";
+printCharttranQueryTask.execute(printCharttranQuery, function (featureSet) {
+
+var resultFeatures = featureSet.features;
+var resultCount = featureSet.features.length;
+//alert (featureSet.features.length);
+          for (var i = 0; i < resultCount; i++) {
+
+	var featureAttributes = featureSet.features[i].attributes;
+	printpointstatid = featureSet.features[i].attributes["STATIC_ID"];
+	printpointdblcalc = featureSet.features[i].attributes["DBL_CALC"];
+	printpointzcalc = featureSet.features[i].attributes["Z_CALC"];
+
+	printpointx = featureSet.features[i].attributes["POINT_X"];
+	printpointy = featureSet.features[i].attributes["POINT_Y"];
+	printpointelev = featureSet.features[i].attributes["z"];
+	printpointdist = featureSet.features[i].attributes["dbl"];
+	printpath.push([ printpointx , printpointy , printpointelev , printpointdist , printpointstatid ]);
+//volcalclist.push([ printpointstatid , printpointdblcalc , printpointzcalc ]);
+volcalclist2.push([ printpointstatid , printpointdist , printpointelev ]);
+	}
+        var printpoints = printmakeElevationProfileFromPath(printpath);
+        printrenderElevationProfileChart(printpoints,'printGraph');
+	}
+);
+
+
+        }
+
+
+function printmakeElevationProfileFromPath(printpath) {
+    var start_elevft = Math.round(printpath[0][2]);
+
+    var printpoints  = [];
+    var total_m = 0;
+    for (var i=0, l=printpath.length; i<l; i++) {
+        var lon    = printpath[i][0];
+        var lat    = printpath[i][1];
+        var elevft = printpath[i][2];
+        var dist = printpath[i][3];
+        var statid    = printpath[i][4];
+
+
+//        if (i) {
+//            var plon = printpath[i-1][0];
+//            var plat = printpath[i-1][1];
+//var R = 6371; // km  
+//var dLat = (lat-plat)*Math.PI/180;  
+//var dLon = (lon-plon)*Math.PI/180;   
+//var a = Math.sin(dLat/2) * Math.sin(dLat/2) +  
+//        Math.cos(plat*Math.PI/180) * Math.cos(lat*Math.PI/180) *   
+//        Math.sin(dLon/2) * Math.sin(dLon/2);   
+//var c = 2 * Math.asin(Math.sqrt(a));   
+//var d = R * c;
+//var slen = d
+//            total_m += slen;
+//        }
+
+//        var miles  = 3280.84 * total_m;
+        var miles  = dist;
+
+
+        // tooltip content: elevation is +- X feet relative to the starting node
+        var delev  = Math.abs(start_elevft-elevft);
+            delev = (elevft>=start_elevft ? '+' : '-') + delev;
+        var text   = "Elevation: " + elevft + " ft";
+        // ready, stick it on
+        printpoints.push({ lon:lon, lat:lat, elevft:elevft, miles:miles, text:text, statid:statid });
+    }
+//alert (JSON.stringify(printpoints));
+    return printpoints;
+}
+
+function printrenderElevationProfileChart(printpoints,containerid) {
+
+removeOptions(document.getElementById("distbox"));
+
+var sel = document.getElementById('distbox');
+
+var fragment = document.createDocumentFragment();
+
+printpoints.forEach(function(printpoints, index) {
+    var opt = document.createElement('option');
+    opt.innerHTML = printpoints.miles;
+    opt.value = printpoints.elevft;
+    opt.id = printpoints.statid;
+    fragment.appendChild(opt);
+});
+
+sel.appendChild(fragment);
+
+    var lowest = 1000000;
+    var data   = [];
+    for (var i=0, l=printpoints.length; i<l; i++) {
+        data.push({ x:printpoints[i].miles, y:printpoints[i].elevft, name:printpoints[i].text, lon:printpoints[i].lon, lat:printpoints[i].lat, statid:printpoints[i].statid });
+        if (printpoints[i].elevft< lowest) lowest = printpoints[i].elevft;
+    }
+//alert (JSON.stringify(data));
+    printchart = new Highcharts.Chart({
+        chart: {
+            type: 'area',
+backgroundColor: '#416999',
+zoomType: 'x',
+marginBottom: 42,
+            renderTo: containerid
+        },
+        title: {
+            text: CRT_TXT,
+margin: 10,
+style: {
+color: '#FFFFFF',
+fontSize: '12px'
+}
+        },
+        xAxis: {
+//min:0,
+            title: {
+                text: 'Distance (ft)',
+style: {
+color: '#FFFFFF'
+}
+            },
+            labels: {
+                style: {
+                    color: '#FFFFFF'
+                }
+            }
+        },
+        yAxis: {
+            title: {
+                text: 'Elevation (ft)',
+style: {
+color: '#FFFFFF'
+}
+            },
+            labels: {
+                style: {
+                    color: '#FFFFFF'
+                }
+            },
+tickInterval: 5,
+            min:lowest,
+            allowDecimals:false
+        },
+        legend: {
+            enabled:false
+        },
+        tooltip: {
+            crosshairs: [true,false],
+            formatter: function () {
+                return this.point.name;
+            }
+        },
+        plotOptions: {
+            area: {
+                marker: {
+                    enabled: false,
+                    symbol: 'circle',
+                    radius: 2,
+
+                    states: {
+                        hover: {
+                            enabled: true
+                        }
+                    }
+                }
+            },
+            series: {
+turboThreshold: 0,
+                point: {
+                    events: {
+                        mouseOver: function() {
+                            var point = new esri.geometry.Point(this.lon,this.lat,new esri.SpatialReference({ wkid: 4326 }));
+                            if (HIGHLIGHT_MARKER.graphics.length) {
+                                HIGHLIGHT_MARKER.graphics[0].setGeometry(point);
+                            } else {
+                                HIGHLIGHT_MARKER.add(new esri.Graphic(point,HIGHLIGHT_MARKER_SYMBOL));
+                            }
+                        },
+
+	                click: function () {
+
+//	                    alert(this.y);
+if (whichContour === "upper") {
+			    $('#from').val(this.y);
+			    $('#fromid').val(this.statid);
+			    $('#fromdist').val(this.x);
+upcon = this.statid;
+upconval = this.y;
+
+//var myPlotLineId = "myPlotLine";
+
+var myPlotLineId;
+
+      var point = this;
+      var xValue = point.x;
+      var xAxis = point.series.xAxis;
+
+      Highcharts.each(xAxis.plotLinesAndBands, function(p) {
+        if (p.id === myPlotLineId) {
+          p.destroy();
+        }
+      });
+
+
+printchart.xAxis[0].removePlotLine('myPlotLineId');
+
+
+
+      xAxis.addPlotLine({
+        value: xValue,
+        width: 2,
+        color: 'red',
+        id: myPlotLineId
+      });
+
+}
+
+if (whichContour === "lower") {
+			    $('#to').val(this.y);
+			    $('#toid').val(this.statid);
+			    $('#todist').val(this.x);
+lowcon = this.statid;
+lowconval = this.y;
+
+//var myPlotLineId2 = "myPlotLine2";
+
+var myPlotLineId2;
+
+      var point2 = this;
+      var yValue2 = point2.y;
+      var yAxis2 = point2.series.yAxis;
+
+      Highcharts.each(yAxis2.plotLinesAndBands, function(p) {
+        if (p.id === myPlotLineId2) {
+          p.destroy();
+        }
+      });
+
+
+printchart.yAxis[0].removePlotLine('myPlotLineId2');
+
+
+
+
+      yAxis2.addPlotLine({
+        value: yValue2,
+        width: 2,
+        color: 'chartreuse',
+        id: myPlotLineId2
+      });
+
+}
+
+	                }
+
+                    }
+
+                },
+                    events: {
+                        mouseOut: function() {
+                          HIGHLIGHT_MARKER.clear();
+                        }
+                    },
+
+
+            }
+        },
+        series: [{ name: 'Elevation', data: data , color: '#ddcbbb', negativeFillColor: 'rgba(153, 208, 243, 0.5)'}]
+
+    });
+
+
+}
+
+
+
+function toggleContour(mode) {
+
+
+	if (mode === "upper") {
+		whichContour = "upper";
+	}
+
+	if (mode === "lower") {
+		whichContour = "lower";
+	}
+
+
+}
+
+function calcVolume() {
+
+//routine for pre-calculated values
+//---------------------------------
+//
+//    for(var i = 0; i < volcalclist.length; i++){
+//        if(volcalclist[i][0] === upcon)
+//            return i;
+//alert(i);
+//var upconid = i;
+//
+//    }
+//
+//    for(var i = 0; i < volcalclist.length; i++){
+//        if(volcalclist[i][0] === lowcon)
+//            return i;
+//alert(i);
+//var lowconid = i;
+//
+//    }
+//
+//var NewA = volcalclist.slice([upconid], [lowconid]);
+//
+//alert (JSON.stringify(NewA));
+//
+//    var voltotal = 0;
+//
+//    for (var i=0, l=NewA.length; i<l; i++) {
+//        var ptid = NewA[i][0];
+//        var ptdblcalc = NewA[i][1];
+//        var ptzcalc = NewA[i][2];
+//alert(ptdblcalc);
+//alert(ptzcalc);
+//alert (lowconval);
+//var step1 = ptzcalc - (lowconval);
+//alert(step1);
+//var step2 = ptdblcalc * step1;
+//alert(step2);
+//var step3 = step2 * 0.037037;
+//alert(step3);
+//voltotal = voltotal + step3;
+//
+//    }
+//
+//alert(voltotal + " cu. yd/ft");
+//---------------------------------
+
+
+
+
+//routine for non-calculated values
+//---------------------------------
+
+    for(var i = 0; i < volcalclist2.length; i++){
+        if(volcalclist2[i][0] === upcon)
+//            return i;
+//alert(i);
+var upconid = i;
+
+    }
+
+    for(var i = 0; i < volcalclist2.length; i++){
+        if(volcalclist2[i][0] === lowcon)
+//            return i;
+//alert(i);
+var lowconid = i;
+
+    }
+
+var NewA2 = volcalclist2.slice([upconid], [lowconid+1]);
+
+//alert (JSON.stringify(NewA2));
+
+    var voltotal = 0;
+
+    for (var i=0, l=NewA2.length-1; i<l; i++) {
+        var ptid2 = NewA2[i][0];
+        var ptdbl = NewA2[i][1];
+        var ptz = NewA2[i][2];
+
+//alert(ptdbl);
+//alert(NewA2[i+1][1]);
+var dbldiff = 0;
+dbldiff = NewA2[i+1][1] - ptdbl;
+//alert(dbldiff);
+var zdiff = 0;
+zdiff = (ptz - ((ptz - NewA2[i+1][2])/2));
+//alert(zdiff);
+var zdiff2 = 0;
+zdiff2 = zdiff - lowconval;
+//zdiff2 = Math.abs(zdiff2);
+var dblzval = 0;
+dblzval = ((dbldiff * zdiff2) * 0.037037);
+voltotal = voltotal + dblzval;
+//alert(voltotal);
+
+    }
+
+//voltotal = Math.abs(voltotal);
+
+alert(voltotal + " cu. yd/ft");
+//---------------------------------
+
+
+}
+
+
+
+function removeOptions(selectbox)
+{
+    var i;
+    for(i = selectbox.options.length - 1 ; i >= 0 ; i--)
+    {
+        selectbox.remove(i);
+    }
+}
+
+function popParams(pVal,pId,pTxt) {
+
+    var ParamVal = pVal;
+    var ParamId = pId;
+    var ParamTxt = pTxt;
+
+if (whichContour === "upper") {
+
+var myPlotLineId;
+//alert(pId);
+
+upcon = Number(pId);
+upconval = Number(pVal);
+
+			    $('#from').val(ParamVal);
+			    $('#fromid').val(ParamId);
+			    $('#fromdist').val(ParamTxt);
+
+//var xValue = ParamId;
+
+      Highcharts.each(printchart.xAxis[0].plotLinesAndBands, function(p) {
+        if (p.id === myPlotLineId) {
+          p.destroy();
+        }
+      });
+
+printchart.xAxis[0].removePlotLine('myPlotLineId');
+
+//var i = pId
+//alert(printchart.series[0].data[0].statid);
+
+ var pointsearch=printchart.series[0].points;
+ for(var i=0;i<pointsearch.length;i++){
+    if(pointsearch[i].statid == pId)
+//    alert(pointsearch[i].x);
+    break;
+
+ }
+
+
+
+
+
+			printchart.xAxis[0].addPlotLine({
+				value: pointsearch[i].x,
+				color: 'red',
+				width: 2,
+				id: 'myPlotLineId'
+			});
+}
+
+
+if (whichContour === "lower") {
+
+var myPlotLineId2;
+//alert(pId);
+
+lowcon = Number(pId);
+lowconval = Number(pVal);
+
+
+
+			    $('#to').val(ParamVal);
+			    $('#toid').val(ParamId);
+			    $('#todist').val(ParamTxt);
+
+
+      Highcharts.each(printchart.yAxis[0].plotLinesAndBands, function(p) {
+        if (p.id === myPlotLineId2) {
+          p.destroy();
+        }
+      });
+
+printchart.yAxis[0].removePlotLine('myPlotLineId2');
+
+
+ var pointsearch=printchart.series[0].points;
+ for(var i=0;i<pointsearch.length;i++){
+    if(pointsearch[i].statid == pId)
+//    alert(pointsearch[i].x);
+    break;
+
+ }
+
+
+			printchart.yAxis[0].addPlotLine({
+				value: pointsearch[i].y,
+				color: 'chartreuse',
+				width: 2,
+				id: 'myPlotLineId2'
+			});
+
+}
+
+
+}
+
+
+        dojo.addOnLoad(Init);
+
+    </script>
+</head>
+<body class="claro">
+<table style="padding:0px; margin:0px; border:0px; border-collapse: collapse;"><tr><td style="padding:0px; margin:0px; border:0px;">
+    <div id="mapPrint" class="mapPrint">
+
+          <div id="ovWin" class="shadow" style="border:1px solid #FFFFFF; position:absolute; right:15px; top:15px; z-Index:998; width:120px;height:120px; ">
+            <div id="overviewDiv" style="width:100%;height:100%;"></div>
+          </div>
+    </div>
+    	<div id="printGraph"></div>
+
+</td><td>
+<select id="distbox" size="4000" style="width: 90px; height:733px;" onchange="popParams(this.options[this.selectedIndex].value, this.options[this.selectedIndex].id, this.options[this.selectedIndex].text)">
+
+</select>
+</td></tr></table>
+
+		<input type="radio" style="padding-top:5px;" name="wContour" value="UpperCon" checked="checked" id="upper" onclick="toggleContour(this.id)"
+		    data-dojo-type="dijit.form.RadioButton"><label for="upper" style="vertical-align:bottom;line-height:19px;">&nbsp;Upper Contour</label>
+
+		<input type="radio" style="padding-top:5px;" name="wContour" value="LowerCon" id="lower" onclick="toggleContour(this.id)"
+		    data-dojo-type="dijit.form.RadioButton"><label for="lower" style="vertical-align:top;line-height:19px;">&nbsp;Lower Contour</label><br><br>
+
+
+<input type="text" name="fromid" id="fromid" value="" size="4" placeholder="ID" />
+<input type="text" name="from" id="from" value="" size="10" placeholder="Upper Contour" />
+<input type="text" name="fromdist" id="fromdist" value="" size="10" placeholder="UC Distance" />
+<input type="text" name="toid" id="toid" value="" size="4" placeholder="ID" />
+<input type="text" name="to" id="to" value="" size="10" placeholder="Lower Contour" />
+<input type="text" name="todist" id="todist" value="" size="10" placeholder="LC Distance" />
+<button data-dojo-type="dijit.form.Button" type="button" onclick="calcVolume()">Calculate Volume</button>
+
+</body>
+</html>

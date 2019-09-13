@@ -1,0 +1,228 @@
+      html, body { 
+        height: 100%; width: 100%; margin: 0; 
+      } 
+      body{
+        background-color:white; overflow:hidden; 
+        font-family: "Verdana"; 
+      }
+      #header {
+        background-color: #416999;
+	height:40px;
+        color:white; font-size:18pt; 
+        text-align:left; font-weight:bold;
+padding-left: 110px;
+padding-top: 4px;
+overflow:hidden;
+      }
+      #subheader {
+        font-size:small;
+        color:white;
+padding-left: 4px;
+      }
+      #mapdiv {
+	height:100%;
+        border-top:solid 1px #82a1c5;
+        border-bottom:solid 1px #82a1c5;
+	padding: 0px;
+
+      }
+      #footer {
+        margin: 0px;
+        background-color:#416999;color:#FFFFFF;
+       font-size:10pt; text-align:center; height:0px;
+padding:0px;
+overflow:hidden;
+
+      }
+      .dijitTabInnerDiv{
+        background-color:#ecefe4;
+      }
+      #tabs{
+        padding:5px;
+      }
+
+.divLogo
+{
+    position: absolute !important;
+    top: 5px;
+    left: 5px;
+    width: 75px;
+
+    z-index: 1006;
+    display: block;
+}
+.imgApp
+{
+    
+    width: 96px;
+
+}
+
+.fullHeightWidth
+{
+    width: 100%;
+    height: 100%;
+}
+#divSplashScreenContainer
+{
+    top: 0px;
+    left: 0px;
+    background: rgba(65,105,153,0.65);
+    -pie-background: rgba(65,105,153,0.65);
+    behavior: url("styles/PIE.htc");
+    position: absolute;
+    z-index: 1003;
+    width: 100%;
+    height: 100%;
+
+}
+
+#divSplashScreenContent
+{
+    z-index: 1003;
+    background-color: #416999;
+    text-align: left;
+    font-family: Verdana !important;
+    font-size: 12px;
+    color: White;
+    border: solid 1px white;
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    border-radius: 5px;
+    width: 30%;
+    text-align:justify;
+}
+
+#divSplashScreenDialogContent
+{
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    border-radius: 5px;
+    -webkit-box-shadow: 0 0 10px #fff;
+    -moz-box-shadow: 0 0 10px #fff;
+    -o-box-shadow: 0 0 10px #fff;
+    box-shadow: 0 0 10px #fff;
+    behavior: url("styles/PIE.htc");
+
+
+}
+
+#divSplashContainer
+{
+    overflow: hidden;
+    position: relative;
+    margin-top: 0px;
+
+}
+
+#divSplashContent
+{
+    padding-left: 10px;
+    padding-right: 10px;
+    overflow: hidden;
+
+
+}
+.customButton
+{
+    border: solid 1px;
+    color: #fff;
+    cursor: pointer;
+    background: -webkit-gradient(linear, left top, left bottom, from(#24476B), to(#5C85AD)) !important;
+    background: -moz-linear-gradient(top, #24476B, #5C85AD) !important;
+    background: -o-linear-gradient(#24476B, #5C85AD) !important;
+    background: linear-gradient(#24476B, #5C85AD) !important;
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    border-radius: 5px;
+    overflow: hidden;
+    width: 75px;
+    margin-top: 5px;
+}
+
+.customButtonInner
+{
+    filter: progid:DXImageTransform.Microsoft.gradient(GradientType=0,startColorstr='#888888', endColorstr='#454545');
+    width: 100%;
+    height: 100%;
+}
+
+#elevationgraph {
+    max-width: 3600px;
+    height: 180px;
+    margin: 0 hidden;
+}
+
+
+#BeachSelectDiv {
+      position: absolute;
+      top: 8px;
+      left: 630px;
+}
+
+.downloadNode {
+      position: absolute;
+      top: 70px;
+      right: 10px;
+      z-index: 50;
+      border: solid #FFFFFF 2px;
+      background-color: #416999;
+      color:#FFFFFF;
+
+        -moz-border-radius:10px;
+        -webkit-border-radius:10px;
+        border-radius:10px;
+    	font-family: Verdana !important;
+    	font-size: 10px;
+
+      width:270;
+}
+
+.legendNode {
+      position: absolute;
+      top: 70px;
+      right: 10px;
+      z-index: 51;
+      border: solid #FFFFFF 2px;
+      background-color: #416999;
+      color:#FFFFFF;
+        -moz-border-radius:10px;
+        -webkit-border-radius:10px;
+        border-radius:10px;
+    	font-family: Verdana !important;
+    	font-size: 10px;
+
+}
+
+.hideContainerHeight
+{
+    overflow: hidden;
+    -webkit-transition: height 0.5s ease-in;
+    -moz-transition: height 0.5s ease-in;
+    -o-transition: height 0.5s ease-in;
+    transition: height 0.5s ease-in;
+    height: 0px !important;
+      border:0px solid;
+}
+
+.showContainerHeight
+{
+    overflow: hidden;
+    -webkit-transition: height 0.5s ease-in;
+    -moz-transition: height 0.5s ease-in;
+    -o-transition: height 0.5s ease-in;
+    transition: height 0.5s ease-in;
+    height: 398px;
+      border:2px solid;
+}
+
+.showLegendContainerHeight
+{
+    overflow: hidden;
+    -webkit-transition: height 0.5s ease-in;
+    -moz-transition: height 0.5s ease-in;
+    -o-transition: height 0.5s ease-in;
+    transition: height 0.5s ease-in;
+    height: 310px;
+      border:2px solid;
+}
